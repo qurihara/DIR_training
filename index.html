@@ -92,6 +92,11 @@
 
         // スタートボタンのクリックイベント
         startButton.addEventListener('click', () => {
+            // iOS Safariの音声再生制限を回避するため、ユーザーの操作時に一度再生を試みる
+            impactSound.play();
+            impactSound.pause();
+            impactSound.currentTime = 0;
+
             setState(2);
         });
 

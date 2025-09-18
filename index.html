@@ -15,7 +15,7 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.02</h1>
+        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.03</h1>
 
         <!-- 状態1: 初期画面 -->
         <div id="state1">
@@ -114,7 +114,7 @@
 
             if (elapsedFrames >= 27) {
                 resultText.style.color = 'red';
-                resultMessage.textContent = 'インパクト返し失敗 / Failed.';
+                resultMessage.textContent = 'インパクト返し失敗 / Failed. ※音の鳴り始めから計測しているので、実際の成功判定とは異なります。';
                 resultMessage.style.color = 'red';
             } else {
                 resultText.style.color = 'blue';

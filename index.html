@@ -15,7 +15,7 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4">Impact Reversal Training by Sound</h1>
+        <h1 class="mb-4">DriveImpact Reversal Training by Sound</h1>
 
         <!-- 状態1: 初期画面 -->
         <div id="state1">
@@ -25,16 +25,16 @@
 
         <!-- 状態2: トレーニング画面 -->
         <div id="state2" style="display: none;">
-            <p>ドライブインパクトの音が鳴ったらボタンを押して下さい。</p>
-            <button id="impactButton" class="btn btn-danger impact-button">インパクトボタン</button>
+            <p>ドライブインパクトの音が鳴ったらインパクトボタンを押して下さい。 / Push the button when the drive impact sound is played.</p>
+            <button id="impactButton" class="btn btn-danger impact-button">インパクトボタン / Impact button</button>
         </div>
 
         <!-- 状態3: 結果画面 -->
         <div id="state3" style="display: none;">
-            <h3>結果</h3>
-            <p>経過時間: <span id="resultTimeMs"></span> ミリ秒</p>
-            <p>フレーム: <span id="resultTimeFrames"></span> フレーム (60fps)</p>
-            <button id="retryButton" class="btn btn-primary">もう一度やる</button>
+            <h3>結果 / Result</h3>
+            <p>経過時間 / Elapsed time: <span id="resultTimeMs"></span> ms</p>
+            <p>Frames: <span id="resultTimeFrames"></span> F</p>
+            <button id="retryButton" class="btn btn-primary">もう一度やる / Do it again</button>
         </div>
     </div>
 

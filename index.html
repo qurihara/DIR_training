@@ -31,10 +31,13 @@
 
         <!-- 状態3: 結果画面 -->
         <div id="state3" style="display: none;">
-            <h3>結果 / Result</h3>
-            <p>経過時間 / Elapsed time: <span id="resultTimeMs"></span> ms</p>
-            <p>Frames: <span id="resultTimeFrames"></span> F</p>
-            <button id="retryButton" class="btn btn-primary">もう一度やる / Do it again</button>
+            <h3>結果</h3>
+            <div id="resultText">
+                <p>経過時間: <span id="resultTimeMs"></span> ミリ秒</p>
+                <p>フレーム: <span id="resultTimeFrames"></span> フレーム (60fps)</p>
+            </div>
+            <h4 id="resultMessage" class="mt-3"></h4>
+            <button id="retryButton" class="btn btn-primary mt-3">もう一度やる</button>
         </div>
     </div>
 
@@ -52,6 +55,8 @@
         const impactSound = document.getElementById('impactSound');
         const resultTimeMs = document.getElementById('resultTimeMs');
         const resultTimeFrames = document.getElementById('resultTimeFrames');
+        const resultText = document.getElementById('resultText');
+        const resultMessage = document.getElementById('resultMessage');
 
         let startTime;
         let timer;
@@ -97,9 +102,20 @@
 
             const endTime = performance.now();
             const elapsedTime = endTime - startTime;
+            const elapsedFrames = elapsedTime / (1000 / 60);
 
             resultTimeMs.textContent = elapsedTime.toFixed(2);
-            resultTimeFrames.textContent = (elapsedTime / (1000 / 60)).toFixed(2);
+            resultTimeFrames.textContent = elapsedFrames.toFixed(2);
+
+            if (elapsedFrames >= 27) {
+                resultText.style.color = 'red';
+                resultMessage.textContent = 'インパクト返し失敗 / Failed.';
+                resultMessage.style.color = 'red';
+            } else {
+                resultText.style.color = 'blue';
+                resultMessage.textContent = 'インパクト返し成功 / Succeeded.';
+                resultMessage.style.color = 'blue';
+            }
             
             // startTimeをリセット
             startTime = undefined;

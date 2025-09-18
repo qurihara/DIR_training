@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Impact Reversal Training by Sound</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .impact-button {
+            width: 100%;
+            height: 300px;
+            font-size: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">Impact Reversal Training by Sound</h1>
+
+        <!-- 状態1: 初期画面 -->
+        <div id="state1">
+            <h2>音でドライブインパクトを返すトレーニング</h2>
+            <button id="startButton" class="btn btn-primary impact-button">start</button>
+        </div>
+
+        <!-- 状態2: トレーニング画面 -->
+        <div id="state2" style="display: none;">
+            <p>ドライブインパクトの音が鳴ったらボタンを押して下さい。</p>
+            <button id="impactButton" class="btn btn-danger impact-button">インパクトボタン</button>
+        </div>
+
+        <!-- 状態3: 結果画面 -->
+        <div id="state3" style="display: none;">
+            <h3>結果</h3>
+            <p>経過時間: <span id="resultTimeMs"></span> ミリ秒</p>
+            <p>フレーム: <span id="resultTimeFrames"></span> フレーム (60fps)</p>
+            <button id="retryButton" class="btn btn-primary">もう一度やる</button>
+        </div>
+    </div>
+
+    <audio id="impactSound" src="B.wav"></audio>
+
+    <script>
+        const state1 = document.getElementById('state1');
+        const state2 = document.getElementById('state2');
+        const state3 = document.getElementById('state3');
+
+        const startButton = document.getElementById('startButton');
+        const impactButton = document.getElementById('impactButton');
+        const retryButton = document.getElementById('retryButton');
+
+        const impactSound = document.getElementById('impactSound');
+        const resultTimeMs = document.getElementById('resultTimeMs');
+        const resultTimeFrames = document.getElementById('resultTimeFrames');
+
+        let startTime;
+        let timer;
+
+        // 状態を切り替える関数
+        function setState(state) {
+            state1.style.display = 'none';
+            state2.style.display = 'none';
+            state3.style.display = 'none';
+
+            if (state === 1) {
+                state1.style.display = 'block';
+            } else if (state === 2) {
+                state2.style.display = 'block';
+                impactButton.disabled = true; // ボタンを無効化
+                startTraining();
+            } else if (state === 3) {
+                state3.style.display = 'block';
+            }
+        }
+
+        // トレーニング開始処理
+        function startTraining() {
+            const randomTime = Math.random() * 10000 + 5000; // 5秒から15秒のランダムな時間
+            
+            timer = setTimeout(() => {
+                impactSound.currentTime = 0;
+                impactSound.play();
+                startTime = performance.now();
+                impactButton.disabled = false; // ボタンを有効化
+            }, randomTime);
+        }
+
+        // スタートボタンのクリックイベント
+        startButton.addEventListener('click', () => {
+            setState(2);
+        });
+
+        // インパクトボタンのクリックイベント
+        impactButton.addEventListener('click', () => {
+            // タイマーが作動する前にクリックされた場合を考慮
+            if (startTime === undefined) return;
+
+            const endTime = performance.now();
+            const elapsedTime = endTime - startTime;
+
+            resultTimeMs.textContent = elapsedTime.toFixed(2);
+            resultTimeFrames.textContent = (elapsedTime / (1000 / 60)).toFixed(2);
+            
+            // startTimeをリセット
+            startTime = undefined;
+
+            setState(3);
+        });
+
+        // もう一度やるボタンのクリックイベント
+        retryButton.addEventListener('click', () => {
+            setState(2);
+        });
+
+        // 初期状態を設定
+        setState(1);
+    </script>
+</body>
+</html>

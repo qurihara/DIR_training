@@ -15,13 +15,12 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.05</h1>
+        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.06</h1>
 
         <!-- 状態1: 初期画面 -->
         <div id="state1">
             <h2>音でドライブインパクトを返すトレーニング</h2>
             <button id="startButton" class="btn btn-primary impact-button">start</button>
-            <h5>（iPhoneだと音の再生が遅いみたいです。後ほど修正します🙏）</h2>
             </div>
 
         <!-- 状態2: トレーニング画面 -->
@@ -42,7 +41,7 @@
         </div>
     </div>
 
-    <audio id="impactSound" src="B.wav" preload="auto"></audio>
+    
 
     <script>
         const state1 = document.getElementById('state1');
@@ -53,7 +52,6 @@
         const impactButton = document.getElementById('impactButton');
         const retryButton = document.getElementById('retryButton');
 
-        const impactSound = document.getElementById('impactSound');
         const resultTimeMs = document.getElementById('resultTimeMs');
         const resultTimeFrames = document.getElementById('resultTimeFrames');
         const resultText = document.getElementById('resultText');
@@ -61,6 +59,53 @@
 
         let startTime;
         let timer;
+
+        // Web Audio APIの準備
+        let audioContext;
+        let audioBuffer;
+
+        // 音声ファイルを読み込んでデコードする関数
+        async function setupAudio() {
+            // 2回目以降は実行しない
+            if (audioBuffer) return true;
+
+            if (!audioContext) {
+                try {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.error('Web Audio API is not supported in this browser');
+                    alert('お使いのブラウザは対応していません。');
+                    return false;
+                }
+            }
+
+            startButton.disabled = true;
+            startButton.textContent = 'Loading...';
+            try {
+                const response = await fetch('B.wav');
+                const arrayBuffer = await response.arrayBuffer();
+                audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+            } catch (e) {
+                console.error('Audio loading failed:', e);
+                startButton.textContent = 'Audio failed to load';
+                return false; // 失敗したことを伝える
+            } finally {
+                startButton.disabled = false;
+                startButton.textContent = 'start';
+            }
+            
+            return true; // 成功したことを伝える
+        }
+
+        // 音声を再生する関数
+        function playSound() {
+            if (!audioContext || !audioBuffer) return;
+            const source = audioContext.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(audioContext.destination);
+            source.start(0);
+        }
+
 
         // 状態を切り替える関数
         function setState(state) {
@@ -84,21 +129,24 @@
             const randomTime = Math.random() * 10000 + 5000; // 5秒から15秒のランダムな時間
             
             timer = setTimeout(() => {
-                impactSound.currentTime = 0;
-                impactSound.play();
+                playSound();
                 startTime = performance.now();
                 impactButton.disabled = false; // ボタンを有効化
             }, randomTime);
         }
 
         // スタートボタンのクリックイベント
-        startButton.addEventListener('click', () => {
-            // iOS Safariの音声再生制限を回避するため、ユーザーの操作時に一度再生を試みる
-            impactSound.play();
-            impactSound.pause();
-            impactSound.currentTime = 0;
+        startButton.addEventListener('click', async () => {
+            // ユーザージェスチャーによりAudioContextを再開（Safari対応）
+            if (audioContext && audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
 
-            setState(2);
+            // 音声の準備
+            const audioReady = await setupAudio();
+            if (audioReady) {
+                setState(2);
+            }
         });
 
         // インパクトボタンのクリックイベント
@@ -115,7 +163,7 @@
 
             if (elapsedFrames >= 27) {
                 resultText.style.color = 'red';
-                resultMessage.textContent = 'インパクト返し失敗 / Failed. ※音の鳴り始めから計測しているので、実際の成功判定とは異なります。';
+                resultMessage.textContent = 'インパクト返し失敗 / Failed.';
                 resultMessage.style.color = 'red';
             } else {
                 resultText.style.color = 'blue';

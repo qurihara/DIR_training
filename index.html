@@ -15,7 +15,7 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.07</h1>
+        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.08</h1>
 
         <!-- 状態1: 初期画面 -->
         <div id="state1">
@@ -63,11 +63,12 @@
         // Web Audio APIの準備
         let audioContext;
         let audioBuffer;
+        let flyingAudioBuffer; // フライング用の音声バッファ
 
         // 音声ファイルを読み込んでデコードする関数
         async function setupAudio() {
             // 2回目以降は実行しない
-            if (audioBuffer) return true;
+            if (audioBuffer && flyingAudioBuffer) return true;
 
             if (!audioContext) {
                 try {
@@ -82,9 +83,18 @@
             startButton.disabled = true;
             startButton.textContent = 'Loading...';
             try {
-                const response = await fetch('B.wav');
-                const arrayBuffer = await response.arrayBuffer();
-                audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                const [response, flyingResponse] = await Promise.all([
+                    fetch('B.wav'),
+                    fetch('sfxg_beep_fast.mp3')
+                ]);
+                const [arrayBuffer, flyingArrayBuffer] = await Promise.all([
+                    response.arrayBuffer(),
+                    flyingResponse.arrayBuffer()
+                ]);
+                [audioBuffer, flyingAudioBuffer] = await Promise.all([
+                    audioContext.decodeAudioData(arrayBuffer),
+                    audioContext.decodeAudioData(flyingArrayBuffer)
+                ]);
             } catch (e) {
                 console.error('Audio loading failed:', e);
                 startButton.textContent = 'Audio failed to load';
@@ -98,10 +108,10 @@
         }
 
         // 音声を再生する関数
-        function playSound() {
-            if (!audioContext || !audioBuffer) return;
+        function playSound(buffer) {
+            if (!audioContext || !buffer) return;
             const source = audioContext.createBufferSource();
-            source.buffer = audioBuffer;
+            source.buffer = buffer;
             source.connect(audioContext.destination);
             source.start(0);
         }
@@ -117,7 +127,6 @@
                 state1.style.display = 'block';
             } else if (state === 2) {
                 state2.style.display = 'block';
-                impactButton.disabled = true; // ボタンを無効化
                 startTraining();
             } else if (state === 3) {
                 state3.style.display = 'block';
@@ -129,9 +138,8 @@
             const randomTime = Math.random() * 10000 + 5000; // 5秒から15秒のランダムな時間
             
             timer = setTimeout(() => {
-                playSound();
+                playSound(audioBuffer);
                 startTime = performance.now();
-                impactButton.disabled = false; // ボタンを有効化
             }, randomTime);
         }
 
@@ -151,8 +159,18 @@
 
         // インパクトボタンのクリックイベント
         impactButton.addEventListener('click', () => {
-            // タイマーが作動する前にクリックされた場合を考慮
-            if (startTime === undefined) return;
+            // タイマーが作動する前にクリックされた場合（フライング）
+            if (startTime === undefined) {
+                playSound(flyingAudioBuffer);
+                clearTimeout(timer); // タイマーをキャンセル
+                resultText.style.color = 'red';
+                resultMessage.textContent = 'フライングで失敗 / Failed by flying.';
+                resultMessage.style.color = 'red';
+                resultTimeMs.textContent = 'N/A';
+                resultTimeFrames.textContent = 'N/A';
+                setState(3);
+                return;
+            }
 
             const endTime = performance.now();
             const elapsedTime = endTime - startTime;

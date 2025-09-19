@@ -15,7 +15,7 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.08</h1>
+        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.12</h1>
 
         <!-- 状態1: 初期画面 -->
         <div id="state1">
@@ -59,16 +59,19 @@
 
         let startTime;
         let timer;
+        let currentMode = 'normal'; // 'normal' or 'fake'
+        let activeAudioSource = null; // 再生中の音源を管理
+        let trainingStatus = 'idle'; // 'idle', 'waiting', 'playing'
 
         // Web Audio APIの準備
         let audioContext;
         let audioBuffer;
         let flyingAudioBuffer; // フライング用の音声バッファ
+        let fakeAudioBuffers = [];
 
         // 音声ファイルを読み込んでデコードする関数
         async function setupAudio() {
-            // 2回目以降は実行しない
-            if (audioBuffer && flyingAudioBuffer) return true;
+            if (audioBuffer && flyingAudioBuffer && fakeAudioBuffers.length > 0) return true;
 
             if (!audioContext) {
                 try {
@@ -83,39 +86,44 @@
             startButton.disabled = true;
             startButton.textContent = 'Loading...';
             try {
-                const [response, flyingResponse] = await Promise.all([
+                const listResponse = await fetch('fakes_list.json');
+                const fakeSoundFilenames = await listResponse.json();
+                const fakeSoundPaths = fakeSoundFilenames.map(file => `fakes/${file}`);
+
+                const responses = await Promise.all([
                     fetch('B.wav'),
-                    fetch('sfxg_beep_fast.mp3')
+                    fetch('sfxg_beep_fast.mp3'),
+                    ...fakeSoundPaths.map(file => fetch(file))
                 ]);
-                const [arrayBuffer, flyingArrayBuffer] = await Promise.all([
-                    response.arrayBuffer(),
-                    flyingResponse.arrayBuffer()
-                ]);
-                [audioBuffer, flyingAudioBuffer] = await Promise.all([
-                    audioContext.decodeAudioData(arrayBuffer),
-                    audioContext.decodeAudioData(flyingArrayBuffer)
-                ]);
+
+                const arrayBuffers = await Promise.all(responses.map(res => res.arrayBuffer()));
+                const decodedAudios = await Promise.all(arrayBuffers.map(ab => audioContext.decodeAudioData(ab)));
+
+                audioBuffer = decodedAudios[0];
+                flyingAudioBuffer = decodedAudios[1];
+                fakeAudioBuffers = decodedAudios.slice(2);
+
             } catch (e) {
                 console.error('Audio loading failed:', e);
                 startButton.textContent = 'Audio failed to load';
-                return false; // 失敗したことを伝える
+                return false;
             } finally {
                 startButton.disabled = false;
                 startButton.textContent = 'start';
             }
             
-            return true; // 成功したことを伝える
+            return true;
         }
 
         // 音声を再生する関数
         function playSound(buffer) {
-            if (!audioContext || !buffer) return;
+            if (!audioContext || !buffer) return null;
             const source = audioContext.createBufferSource();
             source.buffer = buffer;
             source.connect(audioContext.destination);
             source.start(0);
+            return source;
         }
-
 
         // 状態を切り替える関数
         function setState(state) {
@@ -124,33 +132,56 @@
             state3.style.display = 'none';
 
             if (state === 1) {
+                trainingStatus = 'idle';
                 state1.style.display = 'block';
             } else if (state === 2) {
                 state2.style.display = 'block';
                 startTraining();
             } else if (state === 3) {
+                trainingStatus = 'idle';
                 state3.style.display = 'block';
             }
         }
 
         // トレーニング開始処理
         function startTraining() {
-            const randomTime = Math.random() * 10000 + 5000; // 5秒から15秒のランダムな時間
-            
-            timer = setTimeout(() => {
-                playSound(audioBuffer);
-                startTime = performance.now();
-            }, randomTime);
+            clearTimeout(timer);
+            if (activeAudioSource) {
+                activeAudioSource.onended = null;
+                activeAudioSource.stop();
+                activeAudioSource = null;
+            }
+            startTime = undefined;
+            trainingStatus = 'waiting';
+
+            const randomTime = Math.random() * 10000 + 5000;
+
+            if (Math.random() < 0.5) {
+                currentMode = 'normal';
+                timer = setTimeout(() => {
+                    trainingStatus = 'playing';
+                    activeAudioSource = playSound(audioBuffer);
+                    startTime = performance.now();
+                }, randomTime);
+            } else {
+                currentMode = 'fake';
+                timer = setTimeout(() => {
+                    trainingStatus = 'playing';
+                    const fakeSound = fakeAudioBuffers[Math.floor(Math.random() * fakeAudioBuffers.length)];
+                    activeAudioSource = playSound(fakeSound);
+                    activeAudioSource.onended = () => {
+                        trainingStatus = 'idle';
+                        setTimeout(() => setState(2), 100); // 少し待ってから次のトレーニングへ
+                    };
+                }, randomTime);
+            }
         }
 
         // スタートボタンのクリックイベント
         startButton.addEventListener('click', async () => {
-            // ユーザージェスチャーによりAudioContextを再開（Safari対応）
             if (audioContext && audioContext.state === 'suspended') {
                 audioContext.resume();
             }
-
-            // 音声の準備
             const audioReady = await setupAudio();
             if (audioReady) {
                 setState(2);
@@ -159,10 +190,10 @@
 
         // インパクトボタンのクリックイベント
         impactButton.addEventListener('click', () => {
-            // タイマーが作動する前にクリックされた場合（フライング）
-            if (startTime === undefined) {
+            if (trainingStatus === 'waiting') {
+                // フライング
                 playSound(flyingAudioBuffer);
-                clearTimeout(timer); // タイマーをキャンセル
+                clearTimeout(timer);
                 resultText.style.color = 'red';
                 resultMessage.textContent = 'フライングで失敗 / Failed by flying.';
                 resultMessage.style.color = 'red';
@@ -172,27 +203,48 @@
                 return;
             }
 
-            const endTime = performance.now();
-            const elapsedTime = endTime - startTime;
-            const elapsedFrames = elapsedTime / (1000 / 60);
+            if (trainingStatus === 'playing') {
+                if (currentMode === 'fake') {
+                    // フェイク音に対してボタンを押した場合
+                    if (activeAudioSource) {
+                        activeAudioSource.onended = null;
+                        activeAudioSource.stop();
+                    }
+                    resultText.style.color = 'red';
+                    resultMessage.textContent = 'ドライブインパクト音ではありません。失敗。 / Not a drive impact sound. Failed.';
+                    resultMessage.style.color = 'red';
+                    resultTimeMs.textContent = 'N/A';
+                    resultTimeFrames.textContent = 'N/A';
+                    setState(3);
+                    return;
+                }
 
-            resultTimeMs.textContent = elapsedTime.toFixed(2);
-            resultTimeFrames.textContent = elapsedFrames.toFixed(2);
+                if (currentMode === 'normal') {
+                    // 通常モードでの正常な反応
+                    if (startTime === undefined) return; // 安全策
 
-            if (elapsedFrames >= 27) {
-                resultText.style.color = 'red';
-                resultMessage.textContent = 'インパクト返し失敗 / Failed.';
-                resultMessage.style.color = 'red';
-            } else {
-                resultText.style.color = 'blue';
-                resultMessage.textContent = 'インパクト返し成功 / Succeeded.';
-                resultMessage.style.color = 'blue';
+                    const endTime = performance.now();
+                    const elapsedTime = endTime - startTime;
+                    const elapsedFrames = elapsedTime / (1000 / 60);
+
+                    resultTimeMs.textContent = elapsedTime.toFixed(2);
+                    resultTimeFrames.textContent = elapsedFrames.toFixed(2);
+
+                    if (elapsedFrames >= 27) {
+                        resultText.style.color = 'red';
+                        resultMessage.textContent = 'インパクト返し失敗 / Failed.';
+                        resultMessage.style.color = 'red';
+                    } else {
+                        resultText.style.color = 'blue';
+                        resultMessage.textContent = 'インパクト返し成功 / Succeeded.';
+                        resultMessage.style.color = 'blue';
+                    }
+                    
+                    startTime = undefined;
+                    setState(3);
+                }
             }
-            
-            // startTimeをリセット
-            startTime = undefined;
-
-            setState(3);
+            // trainingStatusが'idle'の場合は何もしない
         });
 
         // もう一度やるボタンのクリックイベント

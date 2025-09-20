@@ -15,7 +15,7 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.18</h1>
+        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.19</h1>
 
         <!-- 状態1: 初期画面 -->
         <div id="state1">
@@ -71,11 +71,12 @@
         let audioContext;
         let audioBuffer;
         let flyingAudioBuffer; // フライング用の音声バッファ
+        let state2EntrySoundBuffer; // 状態2移行時用の音声バッファ
         let fakeAudioBuffers = [];
 
         // 音声ファイルを読み込んでデコードする関数
         async function setupAudio() {
-            if (audioBuffer && flyingAudioBuffer && fakeAudioBuffers.length > 0) return true;
+            if (audioBuffer && flyingAudioBuffer && fakeAudioBuffers.length > 0 && state2EntrySoundBuffer) return true;
 
             if (!audioContext) {
                 try {
@@ -97,6 +98,7 @@
                 const responses = await Promise.all([
                     fetch('B.wav'),
                     fetch('sfxg_beep_fast.mp3'),
+                    fetch('computer-find_mono.mp3'),
                     ...fakeSoundPaths.map(file => fetch(file))
                 ]);
 
@@ -105,7 +107,8 @@
 
                 audioBuffer = decodedAudios[0];
                 flyingAudioBuffer = decodedAudios[1];
-                fakeAudioBuffers = decodedAudios.slice(2);
+                state2EntrySoundBuffer = decodedAudios[2];
+                fakeAudioBuffers = decodedAudios.slice(3);
 
             } catch (e) {
                 console.error('Audio loading failed:', e);
@@ -140,17 +143,23 @@
                 trainingStatus = 'idle';
                 state1.style.display = 'block';
             } else if (state === 2) {
+                playSound(state2EntrySoundBuffer);
                 state2.style.display = 'block';
                 startTraining();
             } else if (state === 3) {
                 trainingStatus = 'idle';
                 state3.style.display = 'block';
 
+                // 失敗音を再生
+                if (params.playFailSound) {
+                    playSound(flyingAudioBuffer);
+                }
+
                 // 成功時のみツイートボタンを生成・表示
                 if (params.success) {
                     const { elapsedTime, elapsedFrames } = params.result;
-                    const text = `ドライブインパクトを ${elapsedFrames.toFixed(2)}F で返しました！`;
-                    const hashtags = '音声インパクト返し特訓 \n#栗原式インパクトボタン';
+                    const text = `ドライブインパクトを ${elapsedTime.toFixed(2)}ms (${elapsedFrames.toFixed(2)}F) で返しました！`;
+                    const hashtags = 'インパクト返しトレーニング';
                     const url = window.location.href;
                     tweetButton.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&hashtags=${encodeURIComponent(hashtags)}&url=${encodeURIComponent(url)}`;
                     tweetButton.style.display = 'inline-block';
@@ -186,7 +195,7 @@
                         resultMessage.style.color = 'red';
                         resultTimeMs.textContent = 'N/A';
                         resultTimeFrames.textContent = 'N/A';
-                        setState(3, { success: false });
+                        setState(3, { success: false, playFailSound: true });
                     }, 3000);
                 }, randomTime);
             } else {
@@ -232,6 +241,7 @@
             if (trainingStatus === 'playing') {
                 if (currentMode === 'fake') {
                     // フェイク音に対してボタンを押した場合
+                    playSound(flyingAudioBuffer);
                     if (activeAudioSource) {
                         activeAudioSource.onended = null;
                         activeAudioSource.stop();
@@ -261,7 +271,7 @@
                         resultText.style.color = 'red';
                         resultMessage.textContent = 'インパクト返し失敗 / Failed.';
                         resultMessage.style.color = 'red';
-                        setState(3, { success: false });
+                        setState(3, { success: false, playFailSound: true });
                     } else {
                         resultText.style.color = 'blue';
                         resultMessage.textContent = 'インパクト返し成功 / Succeeded.';

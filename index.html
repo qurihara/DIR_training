@@ -15,18 +15,24 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.22</h1>
+        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.23</h1>
 
         <!-- 状態1: 初期画面 -->
         <div id="state1">
-            <h2>音でドライブインパクトを返すトレーニング</h2>
+            <h2>おじ教授の音声インパクト返し特訓アプリ</h2>
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="fakeModeCheckbox">
+                <label class="form-check-label" for="fakeModeCheckbox">
+                    フェイクあり / With Fakes
+                </label>
+            </div>
             <button id="startButton" class="btn btn-primary impact-button">start</button>
             <div class="mt-4 p-3 bg-light rounded">
                 <h5 class="mb-3">使用方法 / How to Use</h5>
                 <ul>
                     <li>スマートフォンやPCのブラウザで動作します。 / Works on smartphone and PC browsers.</li>
-                    <li>ドライブインパクト音の他にフェイク音がランダムに再生されるので、気をつけましょう。 / Be careful, as fake sounds are randomly played in addition to the Drive Impact sound.</li>
-                    <li>PCやスマートフォンにゲームコントローラをUSB接続すれば、任意のボタンで使用できます。(iOSは未対応) / You can use any button if you connect a game controller via USB to your PC or smartphone (except iOS).</li>
+                    <li>フェイクありモードではドライブインパクト音の他にフェイク音がランダムに再生されるので、気をつけましょう。 / In "With Fakes" mode, be careful as fake sounds are randomly played in addition to the Drive Impact sound.</li>
+                    <li>PCやスマートフォンにゲームコントローラをUSB接続すれば、任意のボタンで使用できます。 / You can use any button if you connect a game controller via USB to your PC or smartphone.</li>
                     <li>BGMを鳴らしながら使ったり、映画を見ながら使ったり、いつでも練習してください。 / Practice anytime, even while listening to BGM or watching movies.</li>
                     <li>※音の再生開始から計測しているので、実際の成功判定とは異なります。/ Note: The measurement starts from the sound playback start, so it is different from the actual success determination.</li>
                 </ul>
@@ -68,6 +74,7 @@
         const resultText = document.getElementById('resultText');
         const resultMessage = document.getElementById('resultMessage');
         const tweetButton = document.getElementById('tweetButton');
+        const fakeModeCheckbox = document.getElementById('fakeModeCheckbox');
 
         let startTime;
         let timer;
@@ -169,9 +176,12 @@
 
                 // 成功時のみツイートボタンを生成・表示
                 if (params.success) {
-                    const { elapsedTime, elapsedFrames } = params.result;
-                    const text = `ドライブインパクト音声を ${elapsedTime.toFixed(2)}ms (${elapsedFrames.toFixed(2)}F) で返しました！`;
-                    const hashtags = 'おじ教授の音声インパクト返し特訓';
+                    const { elapsedTime, elapsedFrames, isFakeModeChecked } = params.result;
+                    let text = `ドライブインパクトを音で聞いて ${elapsedFrames.toFixed(2)}F で返しました！`;
+                    if (isFakeModeChecked) {
+                        text += ' (フェイクありモード)';
+                    }
+                    const hashtags = 'おじ教授の音声インパクト返し特訓アプリ';
                     const url = window.location.href;
                     tweetButton.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&hashtags=${encodeURIComponent(hashtags)}&url=${encodeURIComponent(url)}`;
                     tweetButton.style.display = 'inline-block';
@@ -193,7 +203,8 @@
 
             const randomTime = Math.random() * 10000 + 5000;
 
-            if (Math.random() < 0.5) {
+            if (!fakeModeCheckbox.checked) {
+                // フェイクなしモード (常に通常モード)
                 currentMode = 'normal';
                 timer = setTimeout(() => {
                     trainingStatus = 'playing';
@@ -211,16 +222,36 @@
                     }, 3000);
                 }, randomTime);
             } else {
-                currentMode = 'fake';
-                timer = setTimeout(() => {
-                    trainingStatus = 'playing';
-                    const fakeSound = fakeAudioBuffers[Math.floor(Math.random() * fakeAudioBuffers.length)];
-                    activeAudioSource = playSound(fakeSound);
-                    activeAudioSource.onended = () => {
-                        trainingStatus = 'idle';
-                        setTimeout(() => setState(2, { skipEntrySound: true }), 100); // 少し待ってから次のトレーニングへ
-                    };
-                }, randomTime);
+                // フェイクありモード (現在の50%分岐ロジック)
+                if (Math.random() < 0.5) {
+                    currentMode = 'normal';
+                    timer = setTimeout(() => {
+                        trainingStatus = 'playing';
+                        activeAudioSource = playSound(audioBuffer);
+                        startTime = performance.now();
+
+                        // 3秒後にタイムアウト処理を設定
+                        timeoutTimer = setTimeout(() => {
+                            resultText.style.color = 'red';
+                            resultMessage.textContent = '反応がありませんでした。失敗。 / No reaction. Failed.';
+                            resultMessage.style.color = 'red';
+                            resultTimeMs.textContent = 'N/A';
+                            resultTimeFrames.textContent = 'N/A';
+                            setState(3, { success: false, playFailSound: true });
+                        }, 3000);
+                    }, randomTime);
+                } else {
+                    currentMode = 'fake';
+                    timer = setTimeout(() => {
+                        trainingStatus = 'playing';
+                        const fakeSound = fakeAudioBuffers[Math.floor(Math.random() * fakeAudioBuffers.length)];
+                        activeAudioSource = playSound(fakeSound);
+                        activeAudioSource.onended = () => {
+                            trainingStatus = 'idle';
+                            setTimeout(() => setState(2, { skipEntrySound: true }), 100); // 少し待ってから次のトレーニングへ
+                        };
+                    }, randomTime);
+                }
             }
         }
 
@@ -295,7 +326,7 @@
                 }
             }
             // trainingStatusが'idle'の場合は何もしない
-        });
+        });;
 
         // もう一度やるボタンのクリックイベント
         retryButton.addEventListener('click', () => {

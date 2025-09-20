@@ -15,7 +15,7 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.14</h1>
+        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.15</h1>
 
         <!-- 状態1: 初期画面 -->
         <div id="state1">
@@ -63,6 +63,8 @@
         let currentMode = 'normal'; // 'normal' or 'fake'
         let activeAudioSource = null; // 再生中の音源を管理
         let trainingStatus = 'idle'; // 'idle', 'waiting', 'playing'
+        let gamepadLooping = false;
+        let prevGamepadButtons = {};
 
         // Web Audio APIの準備
         let audioContext;
@@ -134,12 +136,18 @@
 
             if (state === 1) {
                 trainingStatus = 'idle';
+                gamepadLooping = false;
                 state1.style.display = 'block';
             } else if (state === 2) {
                 state2.style.display = 'block';
+                if (!gamepadLooping) {
+                    gamepadLooping = true;
+                    gamepadLoop();
+                }
                 startTraining();
             } else if (state === 3) {
                 trainingStatus = 'idle';
+                gamepadLooping = false;
                 state3.style.display = 'block';
             }
         }
@@ -165,7 +173,7 @@
                     activeAudioSource = playSound(audioBuffer);
                     startTime = performance.now();
 
-                    // 1秒後にタイムアウト処理を設定
+                    // 3秒後にタイムアウト処理を設定
                     timeoutTimer = setTimeout(() => {
                         resultText.style.color = 'red';
                         resultMessage.textContent = '反応がありませんでした。失敗。 / No reaction. Failed.';
@@ -264,6 +272,34 @@
         retryButton.addEventListener('click', () => {
             setState(2);
         });
+
+        // ゲームパッドのループ処理
+        function gamepadLoop() {
+            if (!gamepadLooping) {
+                prevGamepadButtons = {}; // 監視が終了したら状態をリセット
+                return;
+            }
+
+            const gamepads = navigator.getGamepads();
+            for (let i = 0; i < gamepads.length; i++) {
+                const gamepad = gamepads[i];
+                if (gamepad) {
+                    gamepad.buttons.forEach((button, buttonIndex) => {
+                        const buttonId = `${gamepad.index}-${buttonIndex}`;
+                        const isPressed = button.pressed;
+                        const wasPressed = prevGamepadButtons[buttonId] || false;
+
+                        if (isPressed && !wasPressed) {
+                            // ボタンが押された瞬間にインパクトボタンのクリックイベントを発火
+                            impactButton.click();
+                        }
+                        prevGamepadButtons[buttonId] = isPressed;
+                    });
+                }
+            }
+
+            requestAnimationFrame(gamepadLoop);
+        }
 
         // 初期状態を設定
         setState(1);

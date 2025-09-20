@@ -15,7 +15,7 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.23</h1>
+        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.25</h1>
 
         <!-- 状態1: 初期画面 -->
         <div id="state1">
@@ -177,11 +177,8 @@
                 // 成功時のみツイートボタンを生成・表示
                 if (params.success) {
                     const { elapsedTime, elapsedFrames, isFakeModeChecked } = params.result;
-                    let text = `ドライブインパクトを音で聞いて ${elapsedFrames.toFixed(2)}F で返しました！`;
-                    if (isFakeModeChecked) {
-                        text += ' (フェイクありモード)';
-                    }
-                    const hashtags = 'おじ教授の音声インパクト返し特訓アプリ';
+                    const text = `ドライブインパクトを音で聞いて ${elapsedTime.toFixed(2)}ms (${elapsedFrames.toFixed(2)}F) で返しました！`;
+                    let hashtags = 'おじ教授の音声インパクト返し特訓アプリ';
                     const url = window.location.href;
                     tweetButton.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&hashtags=${encodeURIComponent(hashtags)}&url=${encodeURIComponent(url)}`;
                     tweetButton.style.display = 'inline-block';

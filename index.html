@@ -15,12 +15,22 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.19</h1>
+        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.21</h1>
 
         <!-- 状態1: 初期画面 -->
         <div id="state1">
             <h2>音でドライブインパクトを返すトレーニング</h2>
             <button id="startButton" class="btn btn-primary impact-button">start</button>
+            <div class="mt-4 p-3 bg-light rounded">
+                <h5 class="mb-3">使用方法 / How to Use</h5>
+                <ul>
+                    <li>スマートフォンやPCのブラウザで動作します。 / Works on smartphone and PC browsers.</li>
+                    <li>ドライブインパクト音の他にフェイク音がランダムに再生されるので、気をつけましょう。 / Be careful, as fake sounds are randomly played in addition to the Drive Impact sound.</li>
+                    <li>PCやスマートフォンにゲームコントローラをUSB接続すれば、任意のボタンで使用できます。 / You can use any button if you connect a game controller via USB to your PC or smartphone.</li>
+                    <li>BGMを鳴らしながら使ったり、映画を見ながら使ったり、いつでも練習してください。 / Practice anytime, even while listening to BGM or watching movies.</li>
+                    <li>※音の再生開始から計測しているので、実際の成功判定とは異なります。/ Note: The measurement starts from the sound playback start, so it is different from the actual success determination.</li>
+                </ul>
+            </div>
             </div>
 
         <!-- 状態2: トレーニング画面 -->
@@ -143,7 +153,9 @@
                 trainingStatus = 'idle';
                 state1.style.display = 'block';
             } else if (state === 2) {
-                playSound(state2EntrySoundBuffer);
+                if (params.skipEntrySound !== true) {
+                    playSound(state2EntrySoundBuffer);
+                }
                 state2.style.display = 'block';
                 startTraining();
             } else if (state === 3) {
@@ -158,8 +170,8 @@
                 // 成功時のみツイートボタンを生成・表示
                 if (params.success) {
                     const { elapsedTime, elapsedFrames } = params.result;
-                    const text = `ドライブインパクトを ${elapsedTime.toFixed(2)}ms (${elapsedFrames.toFixed(2)}F) で返しました！`;
-                    const hashtags = 'インパクト返しトレーニング';
+                    const text = `ドライブインパクト音声を ${elapsedTime.toFixed(2)}ms (${elapsedFrames.toFixed(2)}F) で返しました！`;
+                    const hashtags = 'おじ教授の音声インパクト返し特訓';
                     const url = window.location.href;
                     tweetButton.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&hashtags=${encodeURIComponent(hashtags)}&url=${encodeURIComponent(url)}`;
                     tweetButton.style.display = 'inline-block';
@@ -206,7 +218,7 @@
                     activeAudioSource = playSound(fakeSound);
                     activeAudioSource.onended = () => {
                         trainingStatus = 'idle';
-                        setTimeout(() => setState(2), 100); // 少し待ってから次のトレーニングへ
+                        setTimeout(() => setState(2, { skipEntrySound: true }), 100); // 少し待ってから次のトレーニングへ
                     };
                 }, randomTime);
             }
@@ -325,7 +337,6 @@
     </script>
     <footer class="text-center mt-5 py-3">
         <a href="https://www.youtube.com/@qurihara" target="_blank" rel="noopener noreferrer">&copy; Kazutaka Kurihara</a>
-        <h6>※音の再生開始から計測しているので、実際の成功判定とは異なります。/ Note: The measurement starts from the sound playback start, so it is different from the actual success determination.</h6>
     </footer>
 </body>
 </html>

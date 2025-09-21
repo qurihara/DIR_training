@@ -15,7 +15,7 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.26</h1>
+        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.27</h1>
 
         <!-- 状態1: 初期画面 -->
         <div id="state1">
@@ -31,10 +31,11 @@
                 <h5 class="mb-3">使用方法 / How to Use</h5>
                 <ul>
                     <li>スマートフォンやPCのブラウザで動作します。 / Works on smartphone and PC browsers.</li>
-                    <li>フェイクありモードではドライブインパクト音の他にフェイク音がランダムに再生されるので、気をつけましょう。 / In "With Fakes" mode, be careful as fake sounds are randomly played in addition to the Drive Impact sound.</li>
-                    <li>PCやスマートフォン（iOSは未対応）にゲームコントローラをUSB接続すれば、任意のボタンで使用できます。 / You can use any button if you connect a game controller via USB to your PC or smartphone (except iOS).</li>
-                    <li>BGMを鳴らしながら使ったり、映画を見ながら使ったり、いつでも練習してください。 / Practice anytime, even while listening to BGM or watching movies.</li>
+                    <li>ドライブインパクト返しの猶予は、入力遅延の2フレームを加味して25フレーム未満です。 / The Drive Impact reversal window is less than 25 frames, considering 2 frames of input lag.</li>
                     <li>※音の再生開始から計測しているので、実際の成功判定とは異なります。/ Note: The measurement starts from the sound playback start, so it is different from the actual success determination.</li>
+                    <li>PCやスマートフォン（iOSは未対応）にゲームコントローラをUSB接続すれば、任意のボタンで使用できます。 / You can use any button if you connect a game controller via USB to your PC or smartphone (except iOS).</li>
+                    <li>フェイクありモードではドライブインパクト音の他にフェイク音がランダムに再生されるので、気をつけましょう。 / In "With Fakes" mode, be careful as fake sounds are randomly played in addition to the Drive Impact sound.</li>
+                    <li>BGMを鳴らしながら使ったり、映画を見ながら使ったり、いつでも練習してください。 / Practice anytime, even while listening to BGM or watching movies.</li>
                 </ul>
             </div>
             </div>
@@ -307,7 +308,8 @@
                     resultTimeMs.textContent = elapsedTime.toFixed(2);
                     resultTimeFrames.textContent = elapsedFrames.toFixed(2);
 
-                    if (elapsedFrames >= 27) {
+                    if (elapsedFrames >= 25) {
+                        playSound(flyingAudioBuffer);
                         resultText.style.color = 'red';
                         resultMessage.textContent = 'インパクト返し失敗 / Failed.';
                         resultMessage.style.color = 'red';

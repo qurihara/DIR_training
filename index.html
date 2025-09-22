@@ -15,7 +15,7 @@
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.27</h1>
+        <h1 class="mb-4">Drive Impact Reversal Training by Sound v1.28</h1>
 
         <!-- 状態1: 初期画面 -->
         <div id="state1">
@@ -31,11 +31,12 @@
                 <h5 class="mb-3">使用方法 / How to Use</h5>
                 <ul>
                     <li>スマートフォンやPCのブラウザで動作します。 / Works on smartphone and PC browsers.</li>
-                    <li>ドライブインパクト返しの猶予は、入力遅延の2フレームを加味して25フレーム未満です。 / The Drive Impact reversal window is less than 25 frames, considering 2 frames of input lag.</li>
-                    <li>※音の再生開始から計測しているので、実際の成功判定とは異なります。/ Note: The measurement starts from the sound playback start, so it is different from the actual success determination.</li>
-                    <li>PCやスマートフォン（iOSは未対応）にゲームコントローラをUSB接続すれば、任意のボタンで使用できます。 / You can use any button if you connect a game controller via USB to your PC or smartphone (except iOS).</li>
                     <li>フェイクありモードではドライブインパクト音の他にフェイク音がランダムに再生されるので、気をつけましょう。 / In "With Fakes" mode, be careful as fake sounds are randomly played in addition to the Drive Impact sound.</li>
+                    <li>ドライブインパクト返しの猶予は、入力遅延の2フレームを加味して25フレーム未満です。 / The Drive Impact reversal window is less than 25 frames, considering 2 frames of input lag.</li>
+                    <li>PCやスマートフォン（iOSは未対応）にゲームコントローラをUSB接続すれば、任意のボタンで使用できます。 / You can use any button if you connect a game controller via USB to your PC or smartphone (except iOS).</li>
                     <li>BGMを鳴らしながら使ったり、映画を見ながら使ったり、いつでも練習してください。 / Practice anytime, even while listening to BGM or watching movies.</li>
+                    <li>※音の再生開始から計測しているので、実際の成功判定とは異なります。/ Note: The measurement starts from the sound playback start, so it is different from the actual success determination.</li>
+                    <li>Special thanks to <a href="https://twitter.com/naruxu_sf" target="_blank" rel="noopener noreferrer">@naruxu_sf</a>😊</li>
                 </ul>
             </div>
             </div>
@@ -87,14 +88,17 @@
 
         // Web Audio APIの準備
         let audioContext;
-        let audioBuffer;
+        let audioBuffer; // B.wav用
+        let sf6ImpactSoundBuffer; // SF6Impact.wav用
         let flyingAudioBuffer; // フライング用の音声バッファ
         let state2EntrySoundBuffer; // 状態2移行時用の音声バッファ
         let fakeAudioBuffers = [];
 
+        let useOldImpactSound = false; // URLパラメータでo=1が指定されたらtrue
+
         // 音声ファイルを読み込んでデコードする関数
         async function setupAudio() {
-            if (audioBuffer && flyingAudioBuffer && fakeAudioBuffers.length > 0 && state2EntrySoundBuffer) return true;
+            if (audioBuffer && sf6ImpactSoundBuffer && flyingAudioBuffer && fakeAudioBuffers.length > 0 && state2EntrySoundBuffer) return true;
 
             if (!audioContext) {
                 try {
@@ -115,6 +119,7 @@
 
                 const responses = await Promise.all([
                     fetch('B.wav'),
+                    fetch('SF6Impact.wav'),
                     fetch('sfxg_beep_fast.mp3'),
                     fetch('computer-find_mono.mp3'),
                     ...fakeSoundPaths.map(file => fetch(file))
@@ -124,9 +129,10 @@
                 const decodedAudios = await Promise.all(arrayBuffers.map(ab => audioContext.decodeAudioData(ab)));
 
                 audioBuffer = decodedAudios[0];
-                flyingAudioBuffer = decodedAudios[1];
-                state2EntrySoundBuffer = decodedAudios[2];
-                fakeAudioBuffers = decodedAudios.slice(3);
+                sf6ImpactSoundBuffer = decodedAudios[1];
+                flyingAudioBuffer = decodedAudios[2];
+                state2EntrySoundBuffer = decodedAudios[3];
+                fakeAudioBuffers = decodedAudios.slice(4);
 
             } catch (e) {
                 console.error('Audio loading failed:', e);
@@ -180,6 +186,9 @@
                     const { elapsedTime, elapsedFrames, isFakeModeChecked } = params.result;
                     const text = `ドライブインパクトを音で聞いて ${elapsedTime.toFixed(2)}ms (${elapsedFrames.toFixed(2)}F) で返しました！`;
                     let hashtags = 'おじ教授の音声インパクト返し特訓アプリ';
+                    if (isFakeModeChecked) {
+                        hashtags += ',フェイクあり';
+                    }
                     const url = window.location.href;
                     tweetButton.href = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&hashtags=${encodeURIComponent(hashtags)}&url=${encodeURIComponent(url)}`;
                     tweetButton.style.display = 'inline-block';
@@ -201,12 +210,15 @@
 
             const randomTime = Math.random() * 10000 + 5000;
 
+            // 再生するインパクト音のバッファを選択
+            const impactSoundToPlay = useOldImpactSound ? audioBuffer : sf6ImpactSoundBuffer;
+
             if (!fakeModeCheckbox.checked) {
                 // フェイクなしモード (常に通常モード)
                 currentMode = 'normal';
                 timer = setTimeout(() => {
                     trainingStatus = 'playing';
-                    activeAudioSource = playSound(audioBuffer);
+                    activeAudioSource = playSound(impactSoundToPlay);
                     startTime = performance.now();
 
                     // 3秒後にタイムアウト処理を設定
@@ -225,7 +237,7 @@
                     currentMode = 'normal';
                     timer = setTimeout(() => {
                         trainingStatus = 'playing';
-                        activeAudioSource = playSound(audioBuffer);
+                        activeAudioSource = playSound(impactSoundToPlay);
                         startTime = performance.now();
 
                         // 3秒後にタイムアウト処理を設定
@@ -362,6 +374,11 @@
 
         // 初期状態を設定
         setState(1);
+        // URLパラメータを解析
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('o') === '1') {
+            useOldImpactSound = true;
+        }
         // ゲームパッドの監視を開始
         gamepadLoop();
     </script>

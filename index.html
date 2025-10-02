@@ -360,7 +360,7 @@
                             if (state1.style.display === 'block') {
                                 startButton.click();
                             } else if (state2.style.display === 'block') {
-                                impactButton.click();
+                                impactButton.dispatchEvent(new Event('mousedown'));
                             } else if (state3.style.display === 'block') {
                                 retryButton.click();
                             }
